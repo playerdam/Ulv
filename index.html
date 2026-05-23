@@ -158,6 +158,79 @@ input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer}
 .leaflet-control-zoom a:hover{background:var(--acc)!important;border-color:var(--acc)!important}
 .leaflet-control-attribution{background:rgba(0,0,0,.45)!important;color:rgba(255,255,255,.45)!important;font-size:9px!important}
 .leaflet-control-attribution a{color:rgba(255,255,255,.6)!important}
+/* HAMBURGER BUTTON — hidden on desktop */
+.hbtn{display:none;flex-direction:column;justify-content:center;align-items:center;gap:5px;padding:0 16px;background:none;border:none;cursor:pointer;height:100%;flex-shrink:0;margin-left:auto}
+.hbtn span{display:block;width:20px;height:2px;background:var(--st);transition:all .2s;border-radius:1px}
+.sb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:490;backdrop-filter:blur(2px)}
+
+/* ── TABLET (≤1024px) ── */
+@media(max-width:1024px){
+  :root{--sw:230px;--pw:340px}
+  .hs:nth-child(n+4){display:none}
+}
+
+/* ── MOBILE (≤768px) ── */
+@media(max-width:768px){
+  :root{--hh:48px;--sw:82vw;--pw:100vw}
+
+  /* Hide desktop header stats, show hamburger */
+  .hstats{display:none}
+  .hmock{display:none}
+  .hbtn{display:flex;margin-left:auto}
+
+  /* Sidebar slides in from left as drawer */
+  .sidebar{
+    position:fixed;
+    top:var(--hh);left:calc(-1 * var(--sw));bottom:0;
+    transition:left .28s cubic-bezier(.4,0,.2,1);
+    z-index:550;
+    box-shadow:4px 0 24px rgba(0,0,0,.35)
+  }
+  .sidebar.open{left:0}
+  .sb-overlay.open{display:block}
+
+  /* Map fills full width */
+  .layout{flex-direction:column}
+  .mwrap{flex:1;width:100vw}
+
+  /* Detail panel rises from bottom as sheet */
+  .dpanel{
+    top:auto;left:0;right:0;bottom:0;
+    width:100%;height:78vh;
+    transform:translateY(100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    border-left:none;border-top:1px solid var(--bdr);
+    border-radius:14px 14px 0 0
+  }
+  .dpanel.open{transform:translateY(0)}
+
+  /* Drag handle on detail panel */
+  .dpanel::before{
+    content:'';display:block;
+    width:40px;height:4px;border-radius:2px;
+    background:var(--bdr);margin:10px auto 2px;flex-shrink:0
+  }
+
+  /* Bigger touch targets */
+  .ai{padding:10px 14px}
+  .pill{padding:5px 10px;font-size:10px}
+  .sb-sel{padding:8px 7px;font-size:13px}
+  .ck-btn{padding:9px 12px}
+  .ck-input{padding:8px 8px;font-size:12px}
+  .sfh button{padding:5px 10px}
+
+  /* Map legend smaller */
+  .mleg{font-size:9px;padding:7px 10px;bottom:12px;right:8px}
+
+  /* Stat cards in detail panel: 2 col */
+  .agrid{grid-template-columns:repeat(auto-fill,minmax(70px,1fr))}
+}
+
+/* ── SMALL MOBILE (≤400px) ── */
+@media(max-width:400px){
+  :root{--sw:92vw}
+  .logo{font-size:13px;padding:0 12px}
+}
 </style>
 </head>
 <body>
@@ -172,7 +245,11 @@ input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer}
     <div class="hs"><div class="v" id="h-c">—</div><div class="l">Est. erstatning</div></div>
   </div>
   <div class="hmock">Mock-data · Ikke officielle tal</div>
+  <button class="hbtn" id="hbtn" onclick="toggleSidebar()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
 </header>
+<div class="sb-overlay" id="sb-overlay" onclick="toggleSidebar()"></div>
 
 <!-- LAYOUT -->
 <div class="layout">
@@ -424,7 +501,38 @@ L.polygon([[55.72,8.40],[55.72,9.12],[56.28,9.12],[56.28,8.40]], zoneStyle)
   .bindTooltip('Ulvezone Midtjylland (~570 km²)', {sticky:true}).addTo(map);
 
 
-// ── KOORDINAT-TJEK ──
+// ── RESPONSIVT SIDEBAR ──
+function toggleSidebar(){
+  const sb = document.querySelector('.sidebar');
+  const ov = document.getElementById('sb-overlay');
+  const btn = document.getElementById('hbtn');
+  const open = sb.classList.toggle('open');
+  ov.classList.toggle('open', open);
+  // Animate hamburger to X
+  btn.style.gap = open ? '0' : '5px';
+  const spans = btn.querySelectorAll('span');
+  if(open){
+    spans[0].style.transform='translateY(7px) rotate(45deg)';
+    spans[1].style.opacity='0';
+    spans[2].style.transform='translateY(-7px) rotate(-45deg)';
+  } else {
+    spans[0].style.transform='';spans[1].style.opacity='';spans[2].style.transform='';
+  }
+}
+
+function closeSidebarMobile(){
+  if(window.innerWidth <= 768){
+    const sb = document.querySelector('.sidebar');
+    if(sb.classList.contains('open')) toggleSidebar();
+  }
+}
+
+// Close sidebar when tapping map on mobile
+document.getElementById('map').addEventListener('click', closeSidebarMobile);
+
+// Re-invalidate map size on resize (Leaflet needs this)
+window.addEventListener('resize', () => { if(map) map.invalidateSize(); });
+
 let ckMarker = null, ckCircle = null;
 
 function haversine(lat1,lon1,lat2,lon2){
